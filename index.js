@@ -31,10 +31,12 @@ async function run() {
         const db = client.db('SportNest');
         const SportNestCollection = db.collection('AllFacilities');
         const featuredFacilities = db.collection('FeatureFacilities');
+        const facilityCollection = db.collection('facilities');
 
 
         app.get('/FeaturedFacilities', async (req, res)=> {
             const facilities = await featuredFacilities.find().toArray();
+            // console.log('get facilities..', facilities)
             res.send(facilities);
         })
 
@@ -43,13 +45,18 @@ async function run() {
             res.send(result);
         })
 
-        app.post('/destinations', async (req, res) => {
-            const destinations = req.body;
-            console.log('post data found..', destinations);
+        app.post('/allfacilities', async (req, res) => {
+            const facilities = req.body;
+            console.log('post data found..', facilities);
             
-            const results = await SportNestCollection.insertOne(AllFacilities);
-            res.send(results)
+            const result = await facilityCollection.insertOne(facilities);
+            res.send(result);
 
+        });
+
+        app.get('/allfacilities', async (req, res)=> {
+            const result = await facilityCollection.find().toArray();
+            res.send(result);
         })
 
 
