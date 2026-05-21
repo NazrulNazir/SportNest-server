@@ -53,12 +53,12 @@ const run = ()=> {
             const modifyProduct = req.body;
             const updateProduct = {
                 $set: {
-                    name: updateProduct.name,
-                    email: updateProduct.email
+                    name: modifyProduct.name,
+                    email: modifyProduct.email
                 }
             }
-            const resuls = await ProductCollections.updateOne(filter, updateProduct);
-            res.send(resuls)
+            const result = await ProductCollections.updateOne(filter, updateProduct);
+            res.send(result)
         })
 
         // delete 

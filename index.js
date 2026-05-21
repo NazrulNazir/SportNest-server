@@ -35,34 +35,34 @@ async function run() {
         const BookingCollection = db.collection('bookings');
 
 
-        app.get('/FeaturedFacilities', async (req, res)=> {
+        app.get('/FeaturedFacilities', async (req, res) => {
             const facilities = await featuredFacilities.find().toArray();
             res.send(facilities);
         })
 
-        app.get('/destinations', async (req, res)=> {
+        app.get('/destinations', async (req, res) => {
             const result = await SportNestCollection.find().toArray();
             res.send(result);
         })
 
         app.post('/allfacilities', async (req, res) => {
             const facilities = req.body;
-            
+
             const result = await facilityCollection.insertOne(facilities);
             res.send(result);
 
         });
 
-        app.get('/allfacilities', async (req, res)=> {
+        app.get('/allfacilities', async (req, res) => {
             const result = await facilityCollection.find().toArray();
             res.send(result);
         })
 
-        app.get('/allfacilities/:id', async (req, res)=> {
+        app.get('/allfacilities/:id', async (req, res) => {
             console.log(req.params.id);
             const id = req.params.id;
             const query = {
-                _id : new ObjectId(id)
+                _id: new ObjectId(id)
             }
             const result = await facilityCollection.findOne(query);
             res.send(result);
@@ -70,28 +70,61 @@ async function run() {
 
 
         // Booking..
-        app.post('/booking', async (req, res)=> {
+        app.post('/booking', async (req, res) => {
             const bookingData = req.body;
             const result = await BookingCollection.insertOne(bookingData);
             res.send(result);
         })
 
-        app.get('/booking/:id', async (req, res)=> {
-            const {id} = req.params;
-            console.log('amar id..',id);
-            const result = await BookingCollection.find({userId : id}).toArray();
-            res.send(result);            
+        app.get('/booking/:id', async (req, res) => {
+            const { id } = req.params;
+            const result = await BookingCollection.find({ userId: id }).toArray();
+            res.send(result);
         });
+
+        // manage facilities
+        app.get('/manageFacilities/:email', async (req, res) => {
+
+            const { email } = req.params;
+
+            const result = await facilityCollection.find({ email }).toArray();
+            res.send(result);
+        });
+
         // Cancel Booking
-        app.delete('/booking/:id', async (req, res)=> {
-            const {id} = req.params;
-            const query  = {
+        app.delete('/booking/:id', async (req, res) => {
+            const { id } = req.params;
+            const query = {
                 _id: new ObjectId(id)
             }
             const result = await BookingCollection.deleteOne(query);
-            res.send(result);            
+            res.send(result);
+        });
+        app.delete('/manageFacilities/:id', async (req, res) => {
+            const { id } = req.params;
+            const query = {
+                _id: new ObjectId(id)
+            }
+            const result = await facilityCollection.deleteOne(query);
+            res.send(result);
         });
 
+        //Edit 
+        app.patch('/booking/:id', async (req, res) => {
+            const { id } = req.params;
+            const query = {
+                _id: new ObjectId(id)
+            }
+            const modifyBooking = req.body;
+            const updateBooking = {
+                $set: {
+                    name: updateProduct.name,
+                    email: updateProduct.email
+                }
+            }
+            const resuls = await BookingCollection.updateOne(query, updateBooking);
+            res.send(resuls)
+        })
 
         await client.db("admin").command({ ping: 1 });
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
