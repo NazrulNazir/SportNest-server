@@ -110,20 +110,18 @@ async function run() {
         });
 
         //Edit 
-        app.patch('/booking/:id', async (req, res) => {
+        app.patch('/allfacilities/:id', async (req, res) => {
             const { id } = req.params;
             const query = {
                 _id: new ObjectId(id)
             }
             const modifyBooking = req.body;
+            console.log('dfy..',modifyBooking)
             const updateBooking = {
-                $set: {
-                    name: updateProduct.name,
-                    email: updateProduct.email
-                }
+                $set: modifyBooking
             }
-            const resuls = await BookingCollection.updateOne(query, updateBooking);
-            res.send(resuls)
+            const result = await facilityCollection.updateOne(query, updateBooking);
+            res.send(result)
         })
 
         await client.db("admin").command({ ping: 1 });
