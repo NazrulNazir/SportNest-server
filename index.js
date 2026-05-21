@@ -37,7 +37,6 @@ async function run() {
 
         app.get('/FeaturedFacilities', async (req, res)=> {
             const facilities = await featuredFacilities.find().toArray();
-            // console.log('get facilities..', facilities)
             res.send(facilities);
         })
 
@@ -48,7 +47,6 @@ async function run() {
 
         app.post('/allfacilities', async (req, res) => {
             const facilities = req.body;
-            console.log('post data found..', facilities);
             
             const result = await facilityCollection.insertOne(facilities);
             res.send(result);
@@ -77,6 +75,13 @@ async function run() {
             const result = await BookingCollection.insertOne(bookingData);
             res.send(result);
         })
+
+        app.get('/booking/:id', async (req, res)=> {
+            const {id} = req.params;
+            console.log('amar id..',id);
+            const result = await BookingCollection.find({userId : id}).toArray();
+            res.send(result);            
+        });
 
 
         await client.db("admin").command({ ping: 1 });
