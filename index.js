@@ -32,6 +32,7 @@ async function run() {
         const SportNestCollection = db.collection('AllFacilities');
         const featuredFacilities = db.collection('FeatureFacilities');
         const facilityCollection = db.collection('facilities');
+        const BookingCollection = db.collection('bookings');
 
 
         app.get('/FeaturedFacilities', async (req, res)=> {
@@ -66,6 +67,14 @@ async function run() {
                 _id : new ObjectId(id)
             }
             const result = await facilityCollection.findOne(query);
+            res.send(result);
+        })
+
+
+        // Booking..
+        app.post('/booking', async (req, res)=> {
+            const bookingData = req.body;
+            const result = await BookingCollection.insertOne(bookingData);
             res.send(result);
         })
 
