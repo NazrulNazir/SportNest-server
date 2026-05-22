@@ -4,6 +4,7 @@ import { MongoClient, ObjectId, ServerApiVersion } from 'mongodb';
 dotenv.config();
 const app = express();
 import cors from 'cors';
+import { createRemoteJWKSet, jwtVerify } from 'jose';
 
 const port = process.env.PORT;
 
@@ -34,6 +35,30 @@ async function run() {
         const facilityCollection = db.collection('facilities');
         const BookingCollection = db.collection('bookings');
 
+        const JWKS = createRemoteJWKSet(
+            new URL('http://localhost:3000/api/auth/jwks')
+        )
+
+        const verifyToken = async (req, res, next) => {
+            const authHeader = req?.headers.authorization;
+            if (!authHeader) {
+                return res.status(401).json({ message: 'Unauthorized' })
+            }
+            const token = authHeader.split(" ")[1];
+            if (!token) {
+                return res.status(401).json({ message: 'Unauthorized' })
+            }
+            
+            try {
+                const { payload } = await jwtVerify(token, JWKS);
+                next()
+            }catch(error){
+                return res.status(403).json({message: 'Forbidden'});
+            }
+            
+
+        }
+
 
         app.get('/FeaturedFacilities', async (req, res) => {
             const facilities = await featuredFacilities.find().toArray();
@@ -54,12 +79,38 @@ async function run() {
         });
 
         app.get('/allfacilities', async (req, res) => {
-            const result = await facilityCollection.find().toArray();
-            res.send(result);
-        })
 
-        app.get('/allfacilities/:id', async (req, res) => {
-            console.log(req.params.id);
+            const search = req.query.search || '';
+            const sport = req.query.sport || '';
+
+            let query = {};
+
+            // SEARCH
+            if (search) {
+                query.name = {
+                    $regex: search,
+                    $options: 'i'
+                };
+            }
+
+            // FILTER
+            if (sport) {
+                query.Facility_Type = {
+                    $in: [sport]
+                };
+            }
+
+            const result = await facilityCollection.find(query).toArray();
+            res.send(result);
+        });
+
+        // app.get('/allfacilities', async (req, res) => {
+        //     const result = await facilityCollection.find().toArray();
+        //     res.send(result);
+        // })
+
+        // details page
+        app.get('/allfacilities/:id', verifyToken, async (req, res) => {
             const id = req.params.id;
             const query = {
                 _id: new ObjectId(id)
@@ -76,14 +127,14 @@ async function run() {
             res.send(result);
         })
 
-        app.get('/booking/:id', async (req, res) => {
+        app.get('/booking/:id', verifyToken, async (req, res) => {
             const { id } = req.params;
             const result = await BookingCollection.find({ userId: id }).toArray();
             res.send(result);
         });
 
         // manage facilities
-        app.get('/manageFacilities/:email', async (req, res) => {
+        app.get('/manageFacilities/:email', verifyToken, async (req, res) => {
 
             const { email } = req.params;
 
@@ -116,7 +167,6 @@ async function run() {
                 _id: new ObjectId(id)
             }
             const modifyBooking = req.body;
-            console.log('dfy..',modifyBooking)
             const updateBooking = {
                 $set: modifyBooking
             }
