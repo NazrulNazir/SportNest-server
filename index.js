@@ -1,20 +1,19 @@
-import express from 'express';
-import dotenv from 'dotenv';
-import { MongoClient, ObjectId, ServerApiVersion } from 'mongodb';
-dotenv.config();
-const app = express();
-import cors from 'cors';
-import { createRemoteJWKSet, jwtVerify } from 'jose';
+const express = require('express');
+const dotenv = require('dotenv');
+const cors = require('cors');
+const { MongoClient, ObjectId, ServerApiVersion } = require('mongodb');
+const { createRemoteJWKSet, jwtVerify } = require('jose-cjs');
 
+dotenv.config();
+
+const app = express();
 const port = process.env.PORT;
 
-// midleware
+// middleware
 app.use(express.json());
 app.use(cors());
 
 const uri = process.env.MONGODB_URI;
-
-// mongodb+srv://<db_username>:<db_password>@cluster0.byynxmz.mongodb.net/?appName=Cluster0
 
 const client = new MongoClient(uri, {
     serverApi: {
@@ -26,8 +25,6 @@ const client = new MongoClient(uri, {
 
 async function run() {
     try {
-        // Connect the client to the server	(optional starting in v4.7)
-        // await client.connect();
 
         const db = client.db('SportNest');
         const SportNestCollection = db.collection('AllFacilities');
@@ -35,47 +32,51 @@ async function run() {
         const facilityCollection = db.collection('facilities');
         const BookingCollection = db.collection('bookings');
 
+        // 🔐 JWKS
         const JWKS = createRemoteJWKSet(
             new URL(`${process.env.CLIENT_URL}/api/auth/jwks`)
-        )
+        );
 
+        // 🔐 middleware
         const verifyToken = async (req, res, next) => {
+
             const authHeader = req?.headers.authorization;
+
             if (!authHeader) {
-                return res.status(401).json({ message: 'Unauthorized' })
+                return res.status(401).json({ message: 'Unauthorized' });
             }
+
             const token = authHeader.split(" ")[1];
+
             if (!token) {
-                return res.status(401).json({ message: 'Unauthorized' })
+                return res.status(401).json({ message: 'Unauthorized' });
             }
-            
+
             try {
                 const { payload } = await jwtVerify(token, JWKS);
-                next()
-            }catch(error){
-                return res.status(403).json({message: 'Forbidden'});
+                req.user = payload; // optional
+                next();
+            } catch (error) {
+                return res.status(403).json({ message: 'Forbidden' });
             }
-            
+        };
 
-        }
-
+        // ================= ROUTES =================
 
         app.get('/FeaturedFacilities', async (req, res) => {
             const facilities = await featuredFacilities.find().toArray();
             res.send(facilities);
-        })
+        });
 
         app.get('/destinations', async (req, res) => {
             const result = await SportNestCollection.find().toArray();
             res.send(result);
-        })
+        });
 
         app.post('/allfacilities', async (req, res) => {
             const facilities = req.body;
-
             const result = await facilityCollection.insertOne(facilities);
             res.send(result);
-
         });
 
         app.get('/allfacilities', async (req, res) => {
@@ -85,7 +86,6 @@ async function run() {
 
             let query = {};
 
-            // SEARCH
             if (search) {
                 query.name = {
                     $regex: search,
@@ -93,7 +93,6 @@ async function run() {
                 };
             }
 
-            // FILTER
             if (sport) {
                 query.Facility_Type = {
                     $in: [sport]
@@ -104,92 +103,88 @@ async function run() {
             res.send(result);
         });
 
-        // app.get('/allfacilities', async (req, res) => {
-        //     const result = await facilityCollection.find().toArray();
-        //     res.send(result);
-        // })
-
-        // details page
+        // details
         app.get('/allfacilities/:id', verifyToken, async (req, res) => {
             const id = req.params.id;
-            const query = {
+
+            const result = await facilityCollection.findOne({
                 _id: new ObjectId(id)
-            }
-            const result = await facilityCollection.findOne(query);
+            });
+
             res.send(result);
-        })
+        });
 
-
-        // Booking..
+        // booking
         app.post('/booking', async (req, res) => {
             const bookingData = req.body;
             const result = await BookingCollection.insertOne(bookingData);
             res.send(result);
-        })
+        });
 
         app.get('/booking/:id', verifyToken, async (req, res) => {
             const { id } = req.params;
+
             const result = await BookingCollection.find({ userId: id }).toArray();
             res.send(result);
         });
 
         // manage facilities
         app.get('/manageFacilities/:email', verifyToken, async (req, res) => {
-
             const { email } = req.params;
 
             const result = await facilityCollection.find({ email }).toArray();
             res.send(result);
         });
 
-        // Cancel Booking
+        // delete booking
         app.delete('/booking/:id', async (req, res) => {
             const { id } = req.params;
-            const query = {
+
+            const result = await BookingCollection.deleteOne({
                 _id: new ObjectId(id)
-            }
-            const result = await BookingCollection.deleteOne(query);
+            });
+
             res.send(result);
         });
+
+        // delete facility
         app.delete('/manageFacilities/:id', async (req, res) => {
             const { id } = req.params;
-            const query = {
+
+            const result = await facilityCollection.deleteOne({
                 _id: new ObjectId(id)
-            }
-            const result = await facilityCollection.deleteOne(query);
+            });
+
             res.send(result);
         });
 
-        //Edit 
+        // update
         app.patch('/allfacilities/:id', async (req, res) => {
             const { id } = req.params;
-            const query = {
-                _id: new ObjectId(id)
-            }
             const modifyBooking = req.body;
-            const updateBooking = {
-                $set: modifyBooking
-            }
-            const result = await facilityCollection.updateOne(query, updateBooking);
-            res.send(result)
-        })
 
-        // await client.db("admin").command({ ping: 1 });
-        console.log("Pinged your deployment. You successfully connected to MongoDB!");
-    } finally {
-        // Ensures that the client will close when you finish/error
-        // await client.close();
+            const result = await facilityCollection.updateOne(
+                { _id: new ObjectId(id) },
+                { $set: modifyBooking }
+            );
+
+            res.send(result);
+        });
+
+        console.log("MongoDB connected successfully");
+
+    } catch (error) {
+        console.log(error);
     }
 }
+
 run().catch(console.dir);
 
-
+// root
 app.get('/', (req, res) => {
-    res.send('This is SportNest Website')
-})
-
-
+    res.send('This is SportNest Website');
+});
 
 app.listen(port, () => {
-    console.log(`Server running port is ${port}`)
-})
+    console.log(`Server running on port ${port}`);
+});
