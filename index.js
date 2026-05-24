@@ -11,7 +11,10 @@ const port = process.env.PORT;
 
 // middleware
 app.use(express.json())
-app.use(cors());
+app.use(cors({
+    origin: process.env.CLIENT_URL,
+    credentials: true
+}));
 
 const uri = process.env.MONGODB_URI;
 
@@ -32,12 +35,12 @@ async function run() {
         const facilityCollection = db.collection('facilities');
         const BookingCollection = db.collection('bookings');
 
-        // 🔐 JWKS
+        // JWKS
         const JWKS = createRemoteJWKSet(
             new URL(`${process.env.CLIENT_URL}/api/auth/jwks`)
         );
 
-        // 🔐 middleware
+        // middleware
         const verifyToken = async (req, res, next) => {
 
             const authHeader = req?.headers.authorization;
@@ -54,7 +57,7 @@ async function run() {
 
             try {
                 const { payload } = await jwtVerify(token, JWKS);
-                req.user = payload; // optional
+                req.user = payload;
                 next();
             } catch (error) {
                 return res.status(403).json({ message: 'Forbidden' });
